@@ -1,0 +1,25 @@
+# NVIDIA k8s-device-plugin DaemonSet — exposes nvidia.com/gpu resource.
+# Tolerates the GPU taint so it actually runs on GPU nodes.
+# Targets only nodes that advertise the nvidia.com/gpu.present=true label.
+
+nodeSelector:
+  nvidia.com/gpu.present: "true"
+
+tolerations:
+  - key: nvidia.com/gpu
+    operator: Equal
+    value: "present"
+    effect: NoSchedule
+  - key: CriticalAddonsOnly
+    operator: Exists
+
+# AL2023 ships the runtime; default config is fine.
+runtimeClassName: ""
+
+resources:
+  requests:
+    cpu: "10m"
+    memory: "32Mi"
+  limits:
+    cpu: "100m"
+    memory: "128Mi"

@@ -1,0 +1,27 @@
+# actions-runner-controller (ARC) controller — manages RunnerScaleSet CRs.
+# Runs on the system node group; never on GPU nodes.
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/actions/gha-runner-scale-set-controller
+  # Pinned in bootstrap.sh via --version flag on helm install.
+
+nodeSelector:
+  role: system
+
+tolerations:
+  - key: CriticalAddonsOnly
+    operator: Exists
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+flags:
+  logLevel: info
+  logFormat: json

@@ -1,0 +1,40 @@
+# Karpenter controller values. Render with:
+#   helm template karpenter oci://public.ecr.aws/karpenter/karpenter \
+#     --version 1.0.7 -n kube-system -f helm/karpenter-values.yaml
+#
+# Substitute placeholders via bootstrap.sh from terraform output.
+
+settings:
+  clusterName: ${CLUSTER_NAME}
+  clusterEndpoint: ${CLUSTER_ENDPOINT}
+  interruptionQueue: ${KARPENTER_QUEUE_NAME}
+
+serviceAccount:
+  name: karpenter
+  # Pod Identity association is created by the karpenter terraform module.
+  # No annotations needed.
+
+replicas: 1
+
+controller:
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "1"
+      memory: "1Gi"
+
+# Schedule controller on the always-on system node group.
+nodeSelector:
+  role: system
+
+tolerations:
+  - key: CriticalAddonsOnly
+    operator: Exists
+
+podDisruptionBudget:
+  name: karpenter
+  maxUnavailable: 1
+
+logLevel: info
