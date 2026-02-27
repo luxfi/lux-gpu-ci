@@ -1,0 +1,65 @@
+# RunnerScaleSet for the Lux GPU CI runner pool.
+#
+# This is a Helm values file passed to:
+#   helm install lux-gpu-runners oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set
+#     --version 0.9.3 -n arc-runners -f helm/runner-scaleset.yaml
+#
+# Labels advertised: self-hosted, linux, amd64, cuda, gpu, t4
+# (the runner-scaleset chart names the runner with the install name; jobs
+#  match against `runs-on` labels they declare.)
+
+# Match what cuda.yml uses: runs-on: [self-hosted, linux, amd64, cuda, gpu]
+# self-hosted/linux/amd64 are added automatically by the runner.
+runnerScaleSetName: lux-gpu-t4
+
+# GitHub config — substituted by bootstrap.sh.
+githubConfigUrl: https://github.com/${GITHUB_ORG}
+githubConfigSecret: github-pat
+
+# Scale 0..1: cheapest possible idle, max 1 concurrent GPU job.
+minRunners: 0
+maxRunners: 1
+
+containerMode:
+  type: dind  # Docker-in-Docker for builds; can also be "kubernetes" for pod-per-job.
+
+template:
+  spec:
+    # Schedule onto Karpenter-provisioned GPU nodes only.
+    nodeSelector:
+      workload: gpu-ci
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Equal
+        value: "present"
+        effect: NoSchedule
+    containers:
+      - name: runner
+        image: ghcr.io/actions/actions-runner:latest
+        command: ["/home/runner/run.sh"]
+        env:
+          - name: ACTIONS_RUNNER_CONTAINER_HOOKS
+            value: /home/runner/k8s/index.js
+          - name: ACTIONS_RUNNER_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER
+            value: "false"
+          - name: RUNNER_LABELS
+            value: "cuda,gpu,t4"
+        resources:
+          requests:
+            cpu: "2"
+            memory: "8Gi"
+            nvidia.com/gpu: "1"
+          limits:
+            cpu: "4"
+            memory: "14Gi"
+            nvidia.com/gpu: "1"
+        volumeMounts:
+          - name: work
+            mountPath: /home/runner/_work
+    volumes:
+      - name: work
+        emptyDir: {}
